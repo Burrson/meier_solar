@@ -65,6 +65,10 @@ if location:
         center_x = SCREEN_WIDTH // 2
         center_y = SCREEN_HEIGHT // 2
 
+        # Ensure pan_angle and tilt_angle are non-negative
+        pan_angle = max(0, pan_angle)
+        tilt_angle = max(0, tilt_angle)
+
         panel_corners = np.array([
             [-panel_length / 2, -panel_width / 2],
             [panel_length / 2, -panel_width / 2],
