@@ -1,5 +1,4 @@
 import pygame
-from pygame.locals import *
 import datetime
 import ephem
 import math
@@ -32,13 +31,18 @@ if location:
     BUTTON_TEXT_COLOR = (255, 255, 255)
 
     current_mode = 'dual'
+    current_mode_text = 'Dual Axis Mode'  # Initialize with dual-axis mode
+
 
     def switch_mode():
-        global current_mode
+        global current_mode, current_mode_text
         if current_mode == 'dual':
             current_mode = 'single'
+            current_mode_text = 'Single Axis Mode'
         else:
             current_mode = 'dual'
+            current_mode_text = 'Dual Axis Mode'
+
 
     def draw_solar_panel(pan_angle, tilt_angle):
         panel_length = 100
@@ -162,8 +166,8 @@ if location:
             optimal_tilt_angle = 90 - solar_altitude
         else:
             # Single-axis mode (horizontal tracking)
-            optimal_pan_angle = solar_azimuth
-            optimal_tilt_angle = 0  # Panel lies flat
+            optimal_pan_angle = 180  # Keep the pan angle fixed (e.g., facing south)
+            optimal_tilt_angle = solar_altitude  # Adjust the tilt angle based on solar altitude
 
         screen.fill(WHITE)
         draw_solar_panel(optimal_pan_angle, optimal_tilt_angle)
@@ -208,7 +212,13 @@ if location:
         )
         screen.blit(button_text, BUTTON_RECT.move(10, 5))
 
+        # Add this code inside the main Pygame loop
+        mode_text = font.render(f"Mode: {current_mode_text}", True, BLACK)
+        screen.blit(mode_text, (10, 130))  # Adjust the position as needed
+
         pygame.display.flip()
+
+
 
     pygame.quit()
 else:
