@@ -1,10 +1,12 @@
 import pygame
 import datetime
 import ephem
-import math
+import numpy as np
 from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
 import pytz
+
+
 
 geolocator = Nominatim(user_agent="solar_panel_positioning")
 timezone_finder = TimezoneFinder()
@@ -44,90 +46,48 @@ if location:
             current_mode_text = 'Dual Axis Mode'
 
 
+    def rotate_point(point, center, angle_rad):
+        # Convert points and center to NumPy arrays
+        point = np.array(point)
+        center = np.array(center)
+
+        # Calculate the rotated point
+        rotated_point = center + np.dot(point - center, np.array([[np.cos(angle_rad), -np.sin(angle_rad)],
+                                                                  [np.sin(angle_rad), np.cos(angle_rad)]]))
+
+        return rotated_point.tolist()
+
+
     def draw_solar_panel(pan_angle, tilt_angle):
         panel_length = 100
         panel_width = 100
 
-        top_left = [
-            SCREEN_WIDTH // 2 - panel_length / 2,
-            SCREEN_HEIGHT // 2 - panel_width / 2,
-        ]
-        top_right = [
-            SCREEN_WIDTH // 2 + panel_length / 2,
-            SCREEN_HEIGHT // 2 - panel_width / 2,
-        ]
-        bottom_left = [
-            SCREEN_WIDTH // 2 - panel_length / 2,
-            SCREEN_HEIGHT // 2 + panel_width / 2,
-        ]
-        bottom_right = [
-            SCREEN_WIDTH // 2 + panel_length / 2,
-            SCREEN_HEIGHT // 2 + panel_width / 2,
-        ]
+        center_x = SCREEN_WIDTH // 2
+        center_y = SCREEN_HEIGHT // 2
 
-        center_x = (top_left[0] + top_right[0]) / 2
-        center_y = (top_left[1] + bottom_left[1]) / 2
-        angle_rad = math.radians(pan_angle)
-        top_left_rot = [
-            center_x
-            + (top_left[0] - center_x) * math.cos(angle_rad)
-            - (top_left[1] - center_y) * math.sin(angle_rad),
-            center_y
-            + (top_left[0] - center_x) * math.sin(angle_rad)
-            + (top_left[1] - center_y) * math.cos(angle_rad),
-        ]
-        top_right_rot = [
-            center_x
-            + (top_right[0] - center_x) * math.cos(angle_rad)
-            - (top_right[1] - center_y) * math.sin(angle_rad),
-            center_y
-            + (top_right[0] - center_x) * math.sin(angle_rad)
-            + (top_right[1] - center_y) * math.cos(angle_rad),
-        ]
-        bottom_left_rot = [
-            center_x
-            + (bottom_left[0] - center_x) * math.cos(angle_rad)
-            - (bottom_left[1] - center_y) * math.sin(angle_rad),
-            center_y
-            + (bottom_left[0] - center_x) * math.sin(angle_rad)
-            + (bottom_left[1] - center_y) * math.cos(angle_rad),
-        ]
-        bottom_right_rot = [
-            center_x
-            + (bottom_right[0] - center_x) * math.cos(angle_rad)
-            - (bottom_right[1] - center_y) * math.sin(angle_rad),
-            center_y
-            + (bottom_right[0] - center_x) * math.sin(angle_rad)
-            + (bottom_right[1] - center_y) * math.cos(angle_rad),
-        ]
+        panel_corners = np.array([
+            [-panel_length / 2, -panel_width / 2],
+            [panel_length / 2, -panel_width / 2],
+            [panel_length / 2, panel_width / 2],
+            [-panel_length / 2, panel_width / 2]
+        ])
 
-        tilt_angle_rad = math.radians(tilt_angle)
-        top_left_tilted = [
-            top_left_rot[0],
-            center_y
-            + (top_left_rot[1] - center_y) * math.cos(tilt_angle_rad),
-        ]
-        top_right_tilted = [
-            top_right_rot[0],
-            center_y
-            + (top_right_rot[1] - center_y) * math.cos(tilt_angle_rad),
-        ]
-        bottom_left_tilted = [
-            bottom_left_rot[0],
-            center_y
-            + (bottom_left_rot[1] - center_y) * math.cos(tilt_angle_rad),
-        ]
-        bottom_right_tilted = [
-            bottom_right_rot[0],
-            center_y
-            + (bottom_right_rot[1] - center_y) * math.cos(tilt_angle_rad),
-        ]
+        rotation_matrix = np.array([[np.cos(np.radians(pan_angle)), -np.sin(np.radians(pan_angle))],
+                                    [np.sin(np.radians(pan_angle)), np.cos(np.radians(pan_angle))]])
+
+        rotated_corners = np.dot(panel_corners, rotation_matrix)
+
+        tilt_angle_rad = np.radians(tilt_angle)
+        rotated_corners[:, 1] += (rotated_corners[:, 1]) * np.cos(tilt_angle_rad)
+
+        rotated_corners += [center_x, center_y]
 
         pygame.draw.polygon(
             screen,
             BLACK,
-            [top_left_tilted, top_right_tilted, bottom_right_tilted, bottom_left_tilted],
+            rotated_corners.tolist(),
         )
+
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Solar Panel Positioning")
@@ -158,8 +118,8 @@ if location:
         observer.date = current_time
 
         sun = ephem.Sun(observer)
-        solar_altitude = math.degrees(sun.alt)
-        solar_azimuth = math.degrees(sun.az)
+        solar_altitude = np.degrees(float(sun.alt))
+        solar_azimuth = np.degrees(float(sun.az))
 
         if current_mode == 'dual':
             optimal_pan_angle = solar_azimuth
@@ -217,8 +177,6 @@ if location:
         screen.blit(mode_text, (10, 130))  # Adjust the position as needed
 
         pygame.display.flip()
-
-
 
     pygame.quit()
 else:
